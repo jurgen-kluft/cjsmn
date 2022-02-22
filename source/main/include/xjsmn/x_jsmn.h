@@ -48,6 +48,7 @@ typedef struct jsmntok
  */
 typedef struct jsmn_parser
 {
+	bool strict;
     const char* begin;
     const char* cursor;
     const char* end;
@@ -61,14 +62,14 @@ typedef struct jsmn_parser
 } jsmn_parser;
 
 /**
- * Create JSON parser over an array of tokens
+ * Create a JSON parser (strict) over an array of tokens
  */
 void jsmn_init(jsmn_parser* parser, jsmntok_t* tokens, unsigned int max_tokens);
+void jsmn_strict(jsmn_parser* parser, bool strict);
 
 /**
  * Run JSON parser. It parses a JSON data string into and array of tokens, each
- * describing a single JSON object.
- * UTF-8 encoding is supported.
+ * describing a single JSON object. UTF-8 encoding is supported.
  */
 int jsmn_parse(jsmn_parser* parser, const char* js, const size_t len);
 

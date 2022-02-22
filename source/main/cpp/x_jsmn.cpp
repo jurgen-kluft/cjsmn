@@ -1,7 +1,6 @@
 #include "xjsmn/x_jsmn.h"
 #include <stddef.h>
 
-#define JSMN_STRICT
 #define JSMN_API static
 
 // UTF-8; read a character and return the unicode codepoint (UTF-32)
@@ -38,6 +37,8 @@ static unsigned int jsmn_read(const char*& str, const char* end)
     return c;
 }
 
+static inline int jsmn_to_pos(jsmn_parser* parser, const char* cursor) { return (int)(cursor - parser->begin); }
+
 /**
  * Constructs a new token and initializes it with type and boundaries.
  */
@@ -47,16 +48,6 @@ static inline void jsmn_push_token(jsmn_parser* parser, const jsmntype_t type, c
     token->type      = type;
     token->start     = start;
     token->end       = end;
-    token->size      = 0;
-    token->parent    = parent;
-}
-
-static inline void jsmn_push_token(jsmn_parser* parser, const jsmntype_t type, const char* start, const char* end, const int parent)
-{
-    jsmntok_t* token = &parser->tokens[parser->num_tokens++];
-    token->type      = type;
-    token->start     = (unsigned int)(start - parser->begin);
-    token->end       = (unsigned int)(end - parser->begin);
     token->size      = 0;
     token->parent    = parent;
 }
@@ -114,7 +105,6 @@ found:
 
 static int jsmn_parse_primitive_utf8(jsmn_parser* parser)
 {
-    // parse primitive but taking UTF-8 into account
     const char* next  = parser->cursor;
     const char* start = parser->cursor;
     for (; parser->cursor < parser->end;)
@@ -133,10 +123,6 @@ static int jsmn_parse_primitive_utf8(jsmn_parser* parser)
 
         switch (c)
         {
-#ifndef JSMN_STRICT
-            // In strict mode primitive must be followed by "," or "}" or "]"
-            case ':':
-#endif
             case '\t':
             case '\r':
             case '\n':
@@ -145,6 +131,10 @@ static int jsmn_parse_primitive_utf8(jsmn_parser* parser)
             case ']':
             case '}': goto found;
             default:
+                if (!parser->strict && c == ':')
+                {
+                    goto found;
+                }
                 // to quiet a warning from gcc
                 break;
         }
@@ -155,11 +145,12 @@ static int jsmn_parse_primitive_utf8(jsmn_parser* parser)
         }
         parser->cursor = next;
     }
-#ifdef JSMN_STRICT
-    // In strict mode primitive must be followed by a comma/object/array
-    parser->cursor = start;
-    return JSMN_ERROR_PART;
-#endif
+    if (parser->strict)
+    {
+        // In strict mode primitive must be followed by a comma/object/array
+        parser->cursor = start;
+        return JSMN_ERROR_PART;
+    }
 
 found:
     if (parser->num_tokens >= parser->max_tokens)
@@ -167,7 +158,7 @@ found:
         parser->cursor = start;
         return JSMN_ERROR_NOMEM;
     }
-    jsmn_push_token(parser, JSMN_PRIMITIVE, start, parser->cursor, parser->toksuper);
+    jsmn_push_token(parser, JSMN_PRIMITIVE, jsmn_to_pos(parser,start), jsmn_to_pos(parser,parser->cursor), parser->toksuper);
     return 0;
 }
 
@@ -266,7 +257,7 @@ static int jsmn_parse_string_utf8(jsmn_parser* parser)
                 parser->cursor = start;
                 return JSMN_ERROR_NOMEM;
             }
-            jsmn_push_token(parser, JSMN_STRING, token_start, parser->cursor, parser->toksuper);
+            jsmn_push_token(parser, JSMN_STRING, jsmn_to_pos(parser, token_start), jsmn_to_pos(parser, parser->cursor), parser->toksuper);
             parser->cursor = next;
             return 0;
         }
@@ -287,7 +278,7 @@ static int jsmn_parse_string_utf8(jsmn_parser* parser)
                 case 'f':
                 case 'r':
                 case 'n':
-                case 't': break;
+                case 't': parser->cursor = next; break;
                 /* Allows escaped symbol \uXXXX */
                 case 'u':
                     for (i = 0; i < 4 && next < parser->end; i++)
@@ -314,7 +305,7 @@ static int jsmn_parse_string_utf8(jsmn_parser* parser)
             }
         }
 
-		parser->cursor = next;
+        parser->cursor = next;
     }
     parser->cursor = start;
     return JSMN_ERROR_PART;
@@ -509,17 +500,18 @@ JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, const size_t l
                 if (parser->toksuper != -1)
                 {
                     jsmntok_t* t = &parser->tokens[parser->toksuper];
-#ifdef JSMN_STRICT
-                    /* In strict mode an object or array can't become a key */
-                    if (t->type == JSMN_OBJECT)
+                    if (parser->strict)
                     {
-                        return JSMN_ERROR_INVAL;
+                        // In strict mode an object or array can't become a key
+                        if (t->type == JSMN_OBJECT)
+                        {
+                            return JSMN_ERROR_INVAL;
+                        }
                     }
-#endif
                     t->size++;
                     parent = parser->toksuper;
                 }
-                jsmn_push_token(parser, (c == '{' ? JSMN_OBJECT : JSMN_ARRAY), parser->cursor, parser->cursor, parent);
+                jsmn_push_token(parser, (c == '{' ? JSMN_OBJECT : JSMN_ARRAY), jsmn_to_pos(parser, parser->cursor), -1, parent);
                 parser->toksuper = parser->num_tokens - 1;
                 parser->cursor   = next;
                 break;
@@ -583,35 +575,43 @@ JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, const size_t l
                 }
                 parser->cursor = next;
                 break;
-#ifdef JSMN_STRICT
-            /* In strict mode primitives are: numbers and booleans */
-            case '-':
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-            case 't':
-            case 'f':
-            case 'n':
-                /* And they must not be keys of the object */
-                if (parser->tokens != NULL && parser->toksuper != -1)
+
+            default:
+                // In non-strict mode every unquoted value is a primitive
+                if (parser->strict)
                 {
-                    const jsmntok_t* t = &parser->tokens[parser->toksuper];
-                    if (t->type == JSMN_OBJECT || (t->type == JSMN_STRING && t->size != 0))
+                    switch (c)
                     {
-                        return JSMN_ERROR_INVAL;
+                        case '-':
+                        case '0':
+                        case '1':
+                        case '2':
+                        case '3':
+                        case '4':
+                        case '5':
+                        case '6':
+                        case '7':
+                        case '8':
+                        case '9':
+                        case 't':
+                        case 'f':
+                        case 'n':
+                            /* And they must not be keys of the object */
+                            if (parser->tokens != NULL && parser->toksuper != -1)
+                            {
+                                const jsmntok_t* t = &parser->tokens[parser->toksuper];
+                                if (t->type == JSMN_OBJECT || (t->type == JSMN_STRING && t->size != 0))
+                                {
+                                    return JSMN_ERROR_INVAL;
+                                }
+                            }
+                            break;
+                        default:
+                            // Unexpected char in strict mode
+                            return JSMN_ERROR_INVAL;
                     }
                 }
-#else
-            /* In non-strict mode every unquoted value is a primitive */
-            default:
-#endif
+
                 r = jsmn_parse_primitive_utf8(parser);
                 if (r < 0)
                 {
@@ -622,16 +622,8 @@ JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, const size_t l
                 {
                     parser->tokens[parser->toksuper].size++;
                 }
-                break;
 
-            default:
-#ifdef JSMN_STRICT
-                /* Unexpected char in strict mode */
-                return JSMN_ERROR_INVAL;
-#else
-                parser->cursor = next;
                 break;
-#endif
         }
     }
 
@@ -653,7 +645,8 @@ JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, const size_t l
  */
 void jsmn_init(jsmn_parser* parser, jsmntok_t* tokens, const unsigned int max_tokens)
 {
-    parser->num_tokens    = 0;
+    parser->strict     = true;
+    parser->num_tokens = 0;
     parser->toksuper   = -1;
     parser->tokens     = tokens;
     parser->max_tokens = max_tokens;
@@ -663,10 +656,9 @@ void jsmn_init(jsmn_parser* parser, jsmntok_t* tokens, const unsigned int max_to
     parser->end        = 0;
 }
 
+void jsmn_strict(jsmn_parser* parser, bool strict) { parser->strict = strict; }
+
 /**
  * Parse json string and fill tokens (UTF-8 encoding)
  */
-int jsmn_parse(jsmn_parser* parser, const char* js, const size_t len)
-{
-    return jsmn_parse_utf8(parser, js, len);
-}
+int jsmn_parse(jsmn_parser* parser, const char* js, const size_t len) { return jsmn_parse_utf8(parser, js, len); }
