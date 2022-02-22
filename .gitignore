@@ -1,0 +1,39 @@
+#ignore all files
+*
+!*/
+
+vendor/
+target/
+t2-output/
+source/main/builddir/
+source/test/builddir/
+tags
+
+#except the following files
+!.gitignore
+!.clang-format
+!*.cpp
+!*.hpp
+!*.c
+!*.h
+!*.inl
+
+!*.pl
+
+!*.go
+
+!*.cs
+!*.csproj
+!*.resx
+
+!*.hlsl
+!*.fragment
+
+!*.mold
+!*.sc
+!*.diagram
+
+!*.ini
+!*.bat
+
+#except the following folders
