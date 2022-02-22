@@ -2,12 +2,7 @@
 *
 !*/
 
-vendor/
 target/
-t2-output/
-source/main/builddir/
-source/test/builddir/
-tags
 
 #except the following files
 !.gitignore
@@ -17,23 +12,8 @@ tags
 !*.c
 !*.h
 !*.inl
-
-!*.pl
-
+!*.json
 !*.go
-
-!*.cs
-!*.csproj
-!*.resx
-
-!*.hlsl
-!*.fragment
-
-!*.mold
-!*.sc
-!*.diagram
-
-!*.ini
-!*.bat
+!*.md
 
 #except the following folders

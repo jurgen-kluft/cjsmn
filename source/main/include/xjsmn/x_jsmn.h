@@ -48,14 +48,14 @@ typedef struct jsmntok
  */
 typedef struct jsmn_parser
 {
-    const char*  begin;
-    const char*  cursor;
-    const char*  end;
+    const char* begin;
+    const char* cursor;
+    const char* end;
 
     unsigned int pos;      /* offset in the JSON string */
     int          toksuper; /* superior token node, e.g. parent object or array */
 
-    unsigned int num_tokens;  /* next token to allocate */
+    unsigned int num_tokens; /* next token to allocate */
     unsigned int max_tokens;
     jsmntok_t*   tokens;
 } jsmn_parser;
@@ -71,6 +71,5 @@ void jsmn_init(jsmn_parser* parser, jsmntok_t* tokens, unsigned int max_tokens);
  * UTF-8 encoding is supported.
  */
 int jsmn_parse(jsmn_parser* parser, const char* js, const size_t len);
-
 
 #endif // __JSMN_H__

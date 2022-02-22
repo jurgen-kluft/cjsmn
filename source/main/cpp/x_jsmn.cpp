@@ -1,13 +1,13 @@
-#include "jsmn/jsmn.h"
+#include "xjsmn/x_jsmn.h"
 #include <stddef.h>
 
 #define JSMN_STRICT
 #define JSMN_API static
 
-// UTF-8; read a character
+// UTF-8; read a character and return the unicode codepoint (UTF-32)
 static unsigned int jsmn_read(const char*& str, const char* end)
 {
-    unsigned int c = *str;
+    unsigned int c = (unsigned char)*str;
     if (c != 0)
     {
         ++str;
@@ -313,6 +313,8 @@ static int jsmn_parse_string_utf8(jsmn_parser* parser)
                 default: parser->cursor = start; return JSMN_ERROR_INVAL;
             }
         }
+
+		parser->cursor = next;
     }
     parser->cursor = start;
     return JSMN_ERROR_PART;

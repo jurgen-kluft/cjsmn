@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/jurgen-kluft/xcode"
-	"github.com/jurgen-kluft/xhash/package"
+	pkg "github.com/jurgen-kluft/xjsmn/package"
 )
 
 func main() {
 	xcode.Init()
-	xcode.Generate(xhash.GetPackage())
+	xcode.Generate(pkg.GetPackage())
 }
