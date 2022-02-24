@@ -65,10 +65,6 @@ static int jsmn_parse_primitive(jsmn_parser* parser, const char* js, unsigned in
     {
         switch (js[parser->pos])
         {
-#ifndef JSMN_STRICT
-            /* In strict mode primitive must be followed by "," or "}" or "]" */
-            case ':':
-#endif
             case '\t':
             case '\r':
             case '\n':
@@ -77,6 +73,13 @@ static int jsmn_parse_primitive(jsmn_parser* parser, const char* js, unsigned in
             case ']':
             case '}': goto found;
             default:
+                if (!parser->strict)
+                {
+                    if (js[parser->pos] == ':')
+                    {
+                        goto found;
+                    }
+                }
                 /* to quiet a warning from gcc*/
                 break;
         }
@@ -86,11 +89,12 @@ static int jsmn_parse_primitive(jsmn_parser* parser, const char* js, unsigned in
             return JSMN_ERROR_INVAL;
         }
     }
-#ifdef JSMN_STRICT
-    /* In strict mode primitive must be followed by a comma/object/array */
-    parser->pos = start;
-    return JSMN_ERROR_PART;
-#endif
+    if (parser->strict)
+    {
+        /* In strict mode primitive must be followed by a comma/object/array */
+        parser->pos = start;
+        return JSMN_ERROR_PART;
+    }
 
 found:
     if (parser->num_tokens >= parser->max_tokens)
@@ -158,7 +162,7 @@ found:
         parser->cursor = start;
         return JSMN_ERROR_NOMEM;
     }
-    jsmn_push_token(parser, JSMN_PRIMITIVE, jsmn_to_pos(parser,start), jsmn_to_pos(parser,parser->cursor), parser->toksuper);
+    jsmn_push_token(parser, JSMN_PRIMITIVE, jsmn_to_pos(parser, start), jsmn_to_pos(parser, parser->cursor), parser->toksuper);
     return 0;
 }
 
@@ -340,13 +344,14 @@ JSMN_API int jsmn_parse_ascii(jsmn_parser* parser, const char* js, unsigned int 
                 if (parser->toksuper != -1)
                 {
                     jsmntok_t* t = &parser->tokens[parser->toksuper];
-#ifdef JSMN_STRICT
-                    /* In strict mode an object or array can't become a key */
-                    if (t->type == JSMN_OBJECT)
+                    if (parser->strict)
                     {
-                        return JSMN_ERROR_INVAL;
+                        /* In strict mode an object or array can't become a key */
+                        if (t->type == JSMN_OBJECT)
+                        {
+                            return JSMN_ERROR_INVAL;
+                        }
                     }
-#endif
                     t->size++;
                     parent = parser->toksuper;
                 }
@@ -407,35 +412,43 @@ JSMN_API int jsmn_parse_ascii(jsmn_parser* parser, const char* js, unsigned int 
                     parser->toksuper = parser->tokens[parser->toksuper].parent;
                 }
                 break;
-#ifdef JSMN_STRICT
-            /* In strict mode primitives are: numbers and booleans */
-            case '-':
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-            case 't':
-            case 'f':
-            case 'n':
-                /* And they must not be keys of the object */
-                if (parser->tokens != NULL && parser->toksuper != -1)
-                {
-                    const jsmntok_t* t = &parser->tokens[parser->toksuper];
-                    if (t->type == JSMN_OBJECT || (t->type == JSMN_STRING && t->size != 0))
-                    {
-                        return JSMN_ERROR_INVAL;
-                    }
-                }
-#else
+
             /* In non-strict mode every unquoted value is a primitive */
             default:
-#endif
+                if (parser->strict)
+                {
+                    /* In strict mode primitives are: numbers and booleans */
+                    switch (c)
+                    {
+                        case '-':
+                        case '0':
+                        case '1':
+                        case '2':
+                        case '3':
+                        case '4':
+                        case '5':
+                        case '6':
+                        case '7':
+                        case '8':
+                        case '9':
+                        case 't':
+                        case 'f':
+                        case 'n':
+                            /* And they must not be keys of the object */
+                            if (parser->tokens != NULL && parser->toksuper != -1)
+                            {
+                                const jsmntok_t* t = &parser->tokens[parser->toksuper];
+                                if (t->type == JSMN_OBJECT || (t->type == JSMN_STRING && t->size != 0))
+                                {
+                                    return JSMN_ERROR_INVAL;
+                                }
+                            }
+                            break;
+                        /* Unexpected char in strict mode */
+                        default: return JSMN_ERROR_INVAL;
+                    }
+                }
+
                 r = jsmn_parse_primitive(parser, js, len);
                 if (r < 0)
                 {
@@ -447,11 +460,6 @@ JSMN_API int jsmn_parse_ascii(jsmn_parser* parser, const char* js, unsigned int 
                     parser->tokens[parser->toksuper].size++;
                 }
                 break;
-
-#ifdef JSMN_STRICT
-            /* Unexpected char in strict mode */
-            default: return JSMN_ERROR_INVAL;
-#endif
         }
     }
 
@@ -489,6 +497,7 @@ JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, unsigned int l
         unsigned int c    = jsmn_read(next, parser->end);
         switch (c)
         {
+            case '\0': goto read_eof;
             case '{':
             case '[':
                 count++;
@@ -627,6 +636,7 @@ JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, unsigned int l
         }
     }
 
+read_eof:
     for (i = parser->num_tokens - 1; i >= 0; i--)
     {
         /* Unmatched opened object or array */
