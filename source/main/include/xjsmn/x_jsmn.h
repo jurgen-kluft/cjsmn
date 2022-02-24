@@ -71,6 +71,6 @@ void jsmn_strict(jsmn_parser* parser, bool strict);
  * Run JSON parser. It parses a JSON data string into and array of tokens, each
  * describing a single JSON object. UTF-8 encoding is supported.
  */
-int jsmn_parse(jsmn_parser* parser, const char* js, const size_t len);
+int jsmn_parse(jsmn_parser* parser, const char* js, unsigned int len);
 
 #endif // __JSMN_H__

@@ -55,7 +55,7 @@ static inline void jsmn_push_token(jsmn_parser* parser, const jsmntype_t type, c
 /**
  * Fills next available token with JSON primitive.
  */
-static int jsmn_parse_primitive(jsmn_parser* parser, const char* js, const size_t len)
+static int jsmn_parse_primitive(jsmn_parser* parser, const char* js, unsigned int len)
 {
     int start;
 
@@ -165,7 +165,7 @@ found:
 /**
  * Fills next token with JSON string.
  */
-static int jsmn_parse_string(jsmn_parser* parser, const char* js, const size_t len)
+static int jsmn_parse_string(jsmn_parser* parser, const char* js, unsigned int len)
 {
     int start = parser->pos;
 
@@ -314,7 +314,7 @@ static int jsmn_parse_string_utf8(jsmn_parser* parser)
 /**
  * Parse JSON string and fill tokens.
  */
-JSMN_API int jsmn_parse_ascii(jsmn_parser* parser, const char* js, const size_t len)
+JSMN_API int jsmn_parse_ascii(jsmn_parser* parser, const char* js, unsigned int len)
 {
     int        r;
     int        i;
@@ -470,7 +470,7 @@ JSMN_API int jsmn_parse_ascii(jsmn_parser* parser, const char* js, const size_t 
 /**
  * Parse JSON string and fill tokens.
  */
-JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, const size_t len)
+JSMN_API int jsmn_parse_utf8(jsmn_parser* parser, const char* js, unsigned int len)
 {
     int        r;
     int        i;
@@ -661,4 +661,4 @@ void jsmn_strict(jsmn_parser* parser, bool strict) { parser->strict = strict; }
 /**
  * Parse json string and fill tokens (UTF-8 encoding)
  */
-int jsmn_parse(jsmn_parser* parser, const char* js, const size_t len) { return jsmn_parse_utf8(parser, js, len); }
+int jsmn_parse(jsmn_parser* parser, const char* js, unsigned int len) { return jsmn_parse_utf8(parser, js, len); }
