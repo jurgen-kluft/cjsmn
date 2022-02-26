@@ -9,25 +9,27 @@ static unsigned int jsmn_read(const char*& str, const char* end)
     unsigned int c = (unsigned char)*str;
     if (c != 0)
     {
-        ++str;
-        if (c < 0x80) {}
+        if (c < 0x80)
+        {
+            ++str;
+        }
         else if ((c >> 5) == 0x6)
         {
             c = ((c << 6) & 0x7ff) + ((str[1]) & 0x3f);
-            ++str;
+            str += 2;
         }
         else if ((c >> 4) == 0xe)
         {
             c = ((c << 12) & 0xffff) + (((str[1]) << 6) & 0xfff);
             c += (str[2]) & 0x3f;
-            str += 2;
+            str += 3;
         }
         else if ((c >> 3) == 0x1e)
         {
             c = ((c << 18) & 0x1fffff) + (((str[1]) << 12) & 0x3ffff);
             c += ((str[2]) << 6) & 0xfff;
             c += (str[3]) & 0x3f;
-            str += 3;
+            str += 4;
         }
         else
         {
