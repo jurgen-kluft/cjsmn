@@ -1,8 +1,8 @@
-#include "xbase/x_target.h"
-#include "xbase/x_runes.h"
-#include "xjsmn/x_jsmn.h"
+#include "cbase/c_target.h"
+#include "cbase/c_runes.h"
+#include "cjsmn/c_jsmn.h"
 
-#include "xunittest/xunittest.h"
+#include "cunittest/xunittest.h"
 
 using namespace xcore;
 
