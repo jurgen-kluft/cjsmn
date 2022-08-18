@@ -2,7 +2,7 @@
 #include "cbase/c_runes.h"
 #include "cjsmn/c_jsmn.h"
 
-#include "cunittest/xunittest.h"
+#include "cunittest/cunittest.h"
 
 using namespace xcore;
 

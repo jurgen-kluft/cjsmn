@@ -6,4 +6,4 @@ A simple json token parser based on jsmn.
 
 ## Dependencies
 
-- xbase
+- cbase
