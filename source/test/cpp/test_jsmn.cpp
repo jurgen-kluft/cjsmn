@@ -4,7 +4,7 @@
 
 #include "cunittest/cunittest.h"
 
-using namespace xcore;
+using namespace ncore;
 
 UNITTEST_SUITE_BEGIN(xjsmn)
 {

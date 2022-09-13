@@ -9,7 +9,7 @@
 UNITTEST_SUITE_LIST(xJsmnUnitTest);
 UNITTEST_SUITE_DECLARE(xJsmnUnitTest, xjsmn);
 
-namespace xcore
+namespace ncore
 {
 	// Our own assert handler
 	class UnitTestAssertHandler : public xcore::asserthandler_t
@@ -64,7 +64,7 @@ namespace xcore
 			mAllocator = NULL;
 		}
 	};
-} // namespace xcore
+} // namespace ncore
 
 xcore::alloc_t *gTestAllocator = NULL;
 xcore::UnitTestAssertHandler gAssertHandler;
